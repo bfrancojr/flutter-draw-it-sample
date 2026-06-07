@@ -5,10 +5,8 @@ manifesto {
   blocked_module_globs = [
     "*.openai*",
     "*.anthropic*",
-    "*.cohere*",
+    "*.cohere*"
   ]
-  # Benchmarks are unlikely in a Flutter sample, but leave the gate disabled rather than 0-silent
-  max_perf_regression_percent = 0
 }
 
 domains = [
