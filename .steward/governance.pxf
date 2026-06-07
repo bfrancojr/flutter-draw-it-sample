@@ -1,5 +1,217 @@
-version = ""
+manifesto {
+  mission = "Open-source Flutter + Gemini sample demonstrating multimodal prompting to compare a hand-drawn image against a target word. Scope is strictly the sample app; no production SDK, no transports."
+  mission_drift_gate = true
+  # Block alternative AI/ML SDKs that would duplicate the Gemini integration
+  blocked_module_globs = [
+    "*.openai*",
+    "*.anthropic*",
+    "*.cohere*",
+  ]
+  # Benchmarks are unlikely in a Flutter sample, but leave the gate disabled rather than 0-silent
+  max_perf_regression_percent = 0
+}
+
 domains = [
+  {
+    name = "core"
+    # Dart/Flutter source: lib/ is where all app logic lives
+    path_globs = ["lib/**/*.dart"]
+    min_coverage = 60
+    max_cyclomatic_complexity = 10
+    approval_threshold = 50
+    criticality_multiplier = 2.0
+  }
+  {
+    name = "tests"
+    path_globs = ["test/**/*.dart", "integration_test/**/*.dart"]
+    min_coverage = 0
+    # Tests can be more verbose; relax complexity gate here
+    max_cyclomatic_complexity = 15
+    approval_threshold = 20
+    criticality_multiplier = 1.0
+  }
+  {
+    name = "platform"
+    # Platform-specific generated/configured subprojects; restricted because touching
+    # these wrong can silently break iOS/Android/Web builds.
+    path_globs = ["android/**", "ios/**", "web/**", "linux/**", "macos/**", "windows/**"]
+    restricted = true
+    supermajority_ratio = 1.0
+    criticality_multiplier = 2.5
+  }
+  {
+    name = "config"
+    # Pubspec + analysis options + CI config; small but high-impact
+    path_globs = ["pubspec.yaml", "pubspec.lock", "analysis_options.yaml", ".github/**"]
+    restricted = true
+    supermajority_ratio = 0.75
+    criticality_multiplier = 2.0
+  }
+  {
+    name = "docs"
+    path_globs = ["**/*.md", "**/*.txt", "LICENSE", "CHANGELOG*"]
+    min_coverage = 0
+    criticality_multiplier = 0.5
+  }
+  {
+    # Safety net: any file not caught above still has a domain
+    name = "other"
+    path_globs = ["**"]
+    min_coverage = 0
+    criticality_multiplier = 1.0
+  }
 ]
+
+escrow {
+  # Public sample repo — actively welcoming contributors who want to learn
+  # Flutter + Gemini. Keep a modest queue of good first issues stocked.
+  sandbox_issue_count = 4
+  sandbox_labels = ["sandbox", "good first issue", "help wanted"]
+  sandbox_templates = [
+    {
+      title = "Add a widget test for a drawing interaction"
+      body = "The `test/` directory is sparse. Pick a widget in `lib/` that handles user drawing input and write a widget test that exercises at least one interaction (e.g. tap, pan). Follow the existing test patterns if any; otherwise model on the Flutter widget testing docs."
+    }
+    {
+      title = "Improve README clarity for a setup step"
+      body = "Re-read the README as a first-time Flutter developer. Find one step that confused you (getting an API key, running `flutter create`, platform setup, etc.) and make it clearer — add an example command, a note about a common pitfall, or a link to a relevant doc."
+    }
+    {
+      title = "Add an accessibility label to a drawing UI element"
+      body = "Screen readers need semantic labels on interactive widgets. Find a widget in `lib/` that's missing a `Semantics` wrapper or `semanticsLabel`, add one, and verify the app still compiles and runs. One widget per PR is fine."
+    }
+    {
+      title = "Document a Gemini multimodal API edge case in comments"
+      body = "The Gemini API has interesting edge cases (empty image, very large image, ambiguous prompt, etc.). Pick one, add a brief inline comment near the relevant call site in `lib/`, and optionally add a TODO or test stub for future coverage."
+    }
+  ]
+}
+
+decay {
+  # 180-day half-life suits a public sample with sporadic contributions;
+  # recent drive-by contributors don't lock out older steady maintainers.
+  half_life = 4320h
+  base_points = 100
+}
+
+immune_system {
+  # Flutter/Dart pub packages use these OSI-approved licenses; pub.dev enforces them.
+  allowed_licenses = ["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC"]
+  # Pub uses exact version pins in pubspec.lock; require that lock file is kept up to date
+  require_pinned_dependencies = true
+  anomaly_quarantine {
+    # A "docs-only" PR that sneaks a platform config change is suspicious
+    documentation_concentration = 0.85
+    # API key handling and platform signing configs are sensitive
+    sensitive_path_globs = [
+      "android/key.properties",
+      "android/app/google-services.json",
+      "ios/Runner/GoogleService-Info.plist",
+      ".github/workflows/**",
+      "pubspec.yaml",
+    ]
+    # 24h gives a human a chance to review before any sensitive-path PR auto-lands
+    timelock = 24h
+  }
+}
+
+amendments {
+  # Small public sample; 2/3 supermajority of the top contributors is reasonable
+  supermajority_ratio = 0.66
+  top_n_holders = 3
+  # 5-day window lets async contributors across time zones weigh in
+  voting_period = 120h
+  amendment_path_globs = [".steward/governance.pxf", "pubspec.yaml", "analysis_options.yaml"]
+}
+
+slashing {
+  # This is a sample app, not a production service. Contributors aren't on-call.
+  # Slashing is conceptually odd for tutorial/demo repos — disable it.
+  enabled = false
+}
+
 founders = [
+  {
+    handle = "bfrancojr"
+    reputation_seed = {
+      "core": 1000
+      "platform": 1000
+      "config": 1000
+      "docs": 800
+      "tests": 600
+      "other": 400
+    }
+  }
 ]
+
+alternatives {
+  enabled = true
+  groups = [
+    # Prevent parallel AI SDK integrations from creeping in alongside Gemini
+    {
+      name = "ai-backend"
+      modules = [
+        "google_generative_ai",
+        "openai_dart",
+        "anthropic_sdk_dart",
+        "langchain",
+      ]
+    }
+    # Common duplicate-purpose Flutter packages
+    {
+      name = "http-client"
+      modules = [
+        "http",
+        "dio",
+        "chopper",
+      ]
+    }
+    {
+      name = "state-management"
+      modules = [
+        "provider",
+        "riverpod",
+        "flutter_bloc",
+        "get",
+        "mobx",
+      ]
+    }
+  ]
+  behavioral {
+    # Dart method names are often short and generic; raise threshold to reduce noise
+    jaccard_threshold = 0.40
+    max_pairs = 15
+    extra_stopwords = ["build", "dispose", "initState", "setState", "context", "widget"]
+  }
+}
+
+sarif {
+  # Flutter/Dart tooling (dart analyze, flutter analyze) can emit SARIF;
+  # enable so CI-produced artifacts feed into Steward's domain gates.
+  enabled = true
+  artifact_glob = "*.sarif"
+}
+
+precedent {
+  # Public sample with modest issue volume; jaccard is sufficient
+  backend = "jaccard"
+  # Slightly higher threshold than default to avoid false-positive duplicate flags
+  # on issues that merely share Flutter/Gemini vocabulary
+  threshold = 0.50
+  candidate_limit = 50
+}
+
+triage {
+  backend = "deterministic"
+  # With only a few domains and moderate criticality multipliers, keep thresholds
+  # close to defaults so most real bugs land in priority/medium or higher
+  high_priority_min = 1.8
+  medium_priority_min = 1.0
+}
+
+caliper {
+  # Caliper is Go-only; this is a Dart/Flutter repo. No effect, but document
+  # the intent explicitly so future maintainers don't wonder if it should be on.
+  enabled = false
+  rules = []
+}
